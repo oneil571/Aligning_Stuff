@@ -1,0 +1,116 @@
+%% Global analysis using Weighted Shape Means
+
+%% Load distance matrices and meshes
+
+distCollection = cell(1,length(SpecimenTypes));
+meshCollection = cell(1,length(SpecimenTypes));
+for i = 1:length(SpecimenTypes)
+    load([projectDir SpecimenTypes{i} '/FinalDists.mat']);
+    distCollection{i} = dists;
+    load([projectDir SpecimenTypes{i} '/newMeshList.mat']);
+    for j = 1:length(newMeshList)
+        newMeshList{j}.V = newMeshList{j}.V - ...
+            repmat(mean(newMeshList{j}.V')',1,newMeshList{j}.nV);
+        newMeshList{j}.V = newMeshList{j}.V/norm(newMeshList{j}.V,'fro');
+    end
+    meshCollection{i} = newMeshList;
+end
+%% Compute means for each possible type of key label combination
+FrechetMeans = cell(length(keys),length(SpecimenTypes));
+for k = 1:length(keys)
+    currentKey = keys{k};
+    totalUnLabels = {};
+    for i = 1:length(SpecimenTypes)
+        curMeshes = MDSCollection{i};
+        load([projectDir SpecimenTypes{i} '/Groups.mat']);
+        totalLabels{k,i} = lower(Groups(currentKey));
+        curLabels = totalLabels{k,i};
+        totalUnLabels = unique([totalUnLabels;unique(totalLabels{k,i})]);
+        curUnLabels = unique(totalLabels{k,i});
+        meanInds = [];
+        for j = 1:length(curUnLabels)
+            inds = find(strcmp(curUnLabels{j},curLabels));
+            curDistMatrix = distCollection{i}(inds,inds);
+            curMean = min(find(sum(curDistMatrix.^2)==min(sum(curDistMatrix.^2))));
+            meanInds = [meanInds inds(curMean)];
+        end
+        curDistMatrix = distCollection{i}(meanInds,meanInds);
+        weightedFrechetMean = min(find(sum(curDistMatrix.^2)==min(sum(curDistMatrix.^2))));
+        FrechetMeans{k,i} = weightedFrechetMean;
+    end
+end
+
+
+
+dists = cell(length(keys),length(SpecimenTypes));
+for i = 1:length(SpecimenTypes)
+    curMeshes = meshCollection{i};
+    for k = 1:length(keys)
+        curDists = zeros(length(curMeshes),1);
+        for j = 1:length(curMeshes)
+            curDists(j) = norm(curMeshes{j}.V-curMeshes{FrechetMeans{k,i}}.V,'fro');
+        end
+        dists{k,i} = curDists;
+    end
+end
+
+%% Levene tests for each pair of MetaGroups: prints nothing if only one group
+
+writePath = [interStatPath 'Total/WeightedFrechetMean/'];
+quadPath = [writePath 'Quad/']; absPath = [writePath 'Abs/'];
+touch(quadPath); touch(absPath);
+quadid = fopen([writePath 'Quad/LeveneVals.tsv'],'w');
+absid = fopen([writePath 'Abs/LeveneVals.tsv'],'w');
+quadDict = {'Mean_Grouping\tSpecimen1\tSpecimen2\tP_value\n'}; 
+absDict = {'Mean_Grouping\tSpecimen1\tSpecimen2\tP_value\n'}; quadP = []; absP = [];
+
+for k = 1:length(keys)
+    for i = 1:length(SpecimenTypes)-1
+        for j = i+1:length(SpecimenTypes)
+            if isempty(dists{k,i}) || isempty(dists{k,j})
+                continue;
+            end
+            touch([writePath 'Quad/' keys{k}]); 
+            touch([writePath 'Abs/' keys{k}]); 
+            if length(dists{k,i}) > length(dists{k,j})
+                dists_i = dists{k,i};
+                dists_j = [dists{k,j};NaN*ones(length(dists{k,i})...
+                    -length(dists{k,j}),1)];
+                Specimen1 = SpecimenTypes{i};
+                Specimen2 = SpecimenTypes{j};
+            else
+                dists_j = dists{j,m};
+                dists_i = [dists{k,i};NaN*ones(length(dists{k,j})...
+                    -length(dists{k,i}),1)];
+                Specimen1 = SpecimenTypes{j};
+                Specimen2 = SpecimenTypes{i};
+            end
+            P = vartestn([dists_i dists_j],'TestType','LeveneQuadratic',...
+            'Display','off');
+            save([quadPath keys{k} '/' ...
+                SpecimenTypes{i} '_' SpecimenTypes{j} '.mat'],'P');
+            quadDict = [quadDict [keys{k} '\t' SpecimenTypes{i} '\t'...
+                SpecimenTypes{j} '\t'  num2str(P) '\n']];
+            quadP = [quadP P];
+            P = vartestn([dists_i dists_j],'TestType','LeveneAbsolute',...
+            'Display','off');
+            absDict = [absDict [keys{k} '\t' SpecimenTypes{i} '\t'...
+                SpecimenTypes{j} '\t'  num2str(P) '\n']];
+            absP = [absP P];
+            save([absPath keys{k} '/' ...
+                SpecimenTypes{i} '_' SpecimenTypes{j} '.mat'],'P');
+        end
+    end
+end
+
+[~,quadInd] = sort(quadP); [~,absInd] = sort(absP);
+fprintf(quadid,quadDict{1}); fprintf(absid,absDict{1});
+for q = quadInd
+    fprintf(quadid,quadDict{q+1});
+end
+for q = absInd
+    fprintf(absid,absDict{q+1});
+end
+fclose(quadid); fclose(absid);
+
+

@@ -1,0 +1,1 @@
+{"num_subsample": [400, 700], "seed": null, "num_cores": 4, "sample_method": "FPS", "reflection": true, "mesh_dir": "/Users/rileywilde/Auto3dgm_Python/originalMeshes/", "output_dir": "/Users/rileywilde/Auto3dgm_Python/alignedMeshes2/originalMeshes/"}

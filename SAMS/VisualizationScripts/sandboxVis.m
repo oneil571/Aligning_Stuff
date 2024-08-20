@@ -1,0 +1,13 @@
+curMesh = 3;
+lmkInd = 1;
+curMatches = matchesPairs{curMesh};
+figure; 
+h(1) = subplot(1,2,1);
+curLmk = curMatches(lmkInd,1);
+meshList{curMesh}.draw; hold on; 
+scatter3(meshList{curMesh}.V(1,curLmk),meshList{curMesh}.V(2,curLmk),meshList{curMesh}.V(3,curLmk),'filled');
+h(2) = subplot(1,2,2);
+curLmk = curMatches(lmkInd,2);
+curMesh = frechMean;
+meshList{curMesh}.draw; hold on; 
+scatter3(meshList{curMesh}.V(1,curLmk),meshList{curMesh}.V(2,curLmk),meshList{curMesh}.V(3,curLmk),'filled');

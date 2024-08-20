@@ -1,0 +1,7 @@
+[submodule "external/hyperbolic_orbifolds"]
+	path = external/hyperbolic_orbifolds
+	url = https://github.com/noamaig/hyperbolic_orbifolds.git
+	branch = master
+[submodule "Alignment/PuenteAlignment"]
+	path = Alignment/PuenteAlignment
+	url = https://github.com/RRavier/PuenteAlignment.git
